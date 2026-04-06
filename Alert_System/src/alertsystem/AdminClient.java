@@ -4,32 +4,19 @@ import java.net.*;
 import java.io.*;
 import java.util.Scanner;
 
-/**
- * AdminClient – used by a security person (admin).
- *
- * An admin can:
- *   1. Create a group (stored locally in data/groups.txt on the server side
- *      via CREATE_GROUP command).
- *   2. Send an alert to one of their groups (or ALL their groups).
- *   3. View inbox (questions left by group members).
- *   4. Reply to a specific question by its ID.
- *
- * Usage:  java alertsystem.AdminClient <serverHost>
- *
- * The admin runs on a fixed port (7100 + offset) so the server can reach them
- * for replies. Since many admins may run on the same machine in testing, the
- * port is chosen by the OS (any free port) and displayed at startup.
- *
- * Protocol extras (admin → server):
- *   CREATE_GROUP|<adminName>|<groupName>
- */
 public class AdminClient {
 
     static final int SERVER_PORT = 6700;
     static final int SO_TIMEOUT  = 5000; // 5 s wait for server reply
 
     public static void main(String[] args) {
-        String serverHost = (args.length > 0) ? args[0] : "localhost";
+        String serverHost ; 
+        if (args.length >0 ) {
+            serverHost = args[0];
+        }
+        else { 
+            serverHost = "localhost" ;
+        }
 
         DatagramSocket socket = null;
         Scanner scanner = new Scanner(System.in);
@@ -39,16 +26,12 @@ public class AdminClient {
             socket = new DatagramSocket();
             socket.setSoTimeout(SO_TIMEOUT);
 
-            System.out.println("=== Admin Client ===");
+            System.out.println("Admin Client");
             System.out.println("Listening on port " + socket.getLocalPort());
             System.out.print("Enter your admin username: ");
             String adminName = scanner.nextLine().trim();
 
             printAdminHelp();
-
-            // Background thread to receive async messages (alerts pushed by server,
-            // e.g. confirmation forwards) – not expected normally for admins but useful
-            // to have for completeness.
             final DatagramSocket finalSocket = socket;
             Thread receiver = new Thread(() -> {
                 byte[] buf = new byte[4096];
@@ -68,8 +51,6 @@ public class AdminClient {
                 }
             });
             receiver.setDaemon(true);
-            // We won't start the background receiver – instead we do request/reply
-            // style for simplicity (matching the course UDP pattern).
 
             InetAddress serverAddr = InetAddress.getByName(serverHost);
 
@@ -172,7 +153,7 @@ public class AdminClient {
                 System.out.println("[Inbox is empty]");
                 return;
             }
-            System.out.println("┌─── INBOX ──────────────────────────────────────────┐");
+            System.out.println("INBOX ");
             // lines[0] is "INBOX", rest are entries: id|username|ip|port|group|text|status
             for (int i = 1; i < lines.length; i++) {
                 String[] f = lines[i].split("\\|", -1);
@@ -181,17 +162,14 @@ public class AdminClient {
                     System.out.printf("│ From    : %s (group: %s)%n", f[1], f[4]);
                     System.out.printf("│ Question: %s%n", f[5]);
                     System.out.printf("│ Status  : %s%n", f[6]);
-                    System.out.println("│────────────────────────────────────────────────────│");
                 }
             }
-            System.out.println("└────────────────────────────────────────────────────┘");
         } else {
             System.out.println("[Server] " + response.replace("|", " | "));
         }
     }
 
     static void printAdminHelp() {
-        System.out.println("┌──────────────────────────────────────────────────────────┐");
         System.out.println("│  Admin Commands                                          │");
         System.out.println("│  create <groupName>           – create a new group       │");
         System.out.println("│  alert <groupName|ALL> <msg>  – send alert               │");
@@ -199,6 +177,5 @@ public class AdminClient {
         System.out.println("│  reply <questionId> <text>    – reply to a question      │");
         System.out.println("│  help                         – show this menu           │");
         System.out.println("│  quit                         – exit                     │");
-        System.out.println("└──────────────────────────────────────────────────────────┘");
     }
 }

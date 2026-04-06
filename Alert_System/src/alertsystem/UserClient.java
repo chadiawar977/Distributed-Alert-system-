@@ -4,22 +4,6 @@ import java.net.*;
 import java.io.*;
 import java.util.Scanner;
 
-/**
- * UserClient – used by a regular member of one or more groups.
- *
- * A user can:
- *   1. Register to a group.
- *   2. Leave a group.
- *   3. Send a question to the admin of a group.
- *   4. Receive alerts pushed by the server (background thread).
- *   5. Receive replies from an admin (background thread).
- *
- * Usage:  java alertsystem.UserClient <serverHost>
- *
- * The client binds to a fixed port so the server can push alerts.
- * Since multiple users may run on one machine (testing), we let the OS
- * pick a free port and the server records it upon REGISTER.
- */
 public class UserClient {
 
     static final int SERVER_PORT = 6700;
@@ -63,17 +47,6 @@ public class UserClient {
                 }
             });
 
-            // For the request/reply model we use setSoTimeout so receive doesn't block forever.
-            // The background listener shares the same socket; after sendAndReceive we switch
-            // to the listener style.
-            // Simpler approach used here: no SO_TIMEOUT on the shared socket – interactive
-            // commands use a separate send+receive loop, and the listener runs otherwise.
-            // We implement a clean dual-mode: no timeout on socket, listener always running,
-            // and interactive sends are synchronised via a lock-free flag pattern.
-            //
-            // For simplicity matching the course style, we keep it sequential:
-            // the user types a command → send → receive (with short timeout) → print.
-            // Alerts arriving between commands are printed by the listener thread.
 
             socket.setSoTimeout(SO_TIMEOUT);
             listener.setDaemon(true);
@@ -149,9 +122,6 @@ public class UserClient {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Handle server-pushed messages (alerts, replies)
-    // -------------------------------------------------------------------------
     static void handlePushedMessage(String msg, String username) {
         if (msg.startsWith("ALERT|")) {
             // ALERT|<groupName>|<message>
@@ -159,11 +129,9 @@ public class UserClient {
             String group   = (f.length > 1) ? f[1] : "?";
             String message = (f.length > 2) ? f[2] : "";
             System.out.println();
-            System.out.println("╔══════════════════════════════════════════════════╗");
-            System.out.println("║  🚨  SECURITY ALERT  🚨                         ║");
-            System.out.println("║  Group  : " + padRight(group, 37) + " ║");
-            System.out.println("║  Message: " + padRight(message, 37) + " ║");
-            System.out.println("╚══════════════════════════════════════════════════╝");
+            System.out.println("SECURITY ALERT ");
+            System.out.println("║  Group  : " + group);
+            System.out.println("║  Message: " + message);
             System.out.print("> ");
         } else if (msg.startsWith("REPLY|")) {
             // REPLY|<adminName>|<replyText>
@@ -171,9 +139,8 @@ public class UserClient {
             String admin = (f.length > 1) ? f[1] : "Admin";
             String reply = (f.length > 2) ? f[2] : "";
             System.out.println();
-            System.out.println("┌── Reply from " + admin + " ──────────────────────────────┐");
-            System.out.println("│ " + reply);
-            System.out.println("└────────────────────────────────────────────────────┘");
+            System.out.println("┌── Reply from " + admin );
+            System.out.println(reply);
             System.out.print("> ");
         }
     }
@@ -203,13 +170,11 @@ public class UserClient {
     }
 
     static void printUserHelp() {
-        System.out.println("┌──────────────────────────────────────────────────────────┐");
         System.out.println("│  User Commands                                           │");
         System.out.println("│  register <groupName>              – join a group        │");
         System.out.println("│  leave <groupName>                 – leave a group       │");
         System.out.println("│  question <groupName> <text>       – ask the admin       │");
         System.out.println("│  help                              – show this menu      │");
         System.out.println("│  quit                              – exit                │");
-        System.out.println("└──────────────────────────────────────────────────────────┘");
     }
 }

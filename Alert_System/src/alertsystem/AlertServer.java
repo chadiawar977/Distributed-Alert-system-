@@ -4,37 +4,6 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 
-/**
- * AlertServer – the central hub of the distributed alert system.
- *
- * Responsibilities:
- *   - Accept REGISTER / LEAVE commands from clients.
- *   - Accept ALERT commands from admins and forward to every member of the target group(s).
- *   - Accept QUESTION commands from regular users and store them in the admin's inbox file.
- *   - Accept INBOX commands from admins and return their pending questions.
- *   - Accept REPLY commands from admins and forward the reply to the original asker.
- *
- * Protocol (all messages are plain UTF-8 strings, fields separated by '|'):
- *   Client  → Server :  REGISTER|<username>|<groupName>
- *   Client  → Server :  LEAVE|<username>|<groupName>
- *   Admin   → Server :  ALERT|<adminName>|<groupName>|<message>
- *                       ALERT|<adminName>|ALL|<message>          (all groups owned by admin)
- *   Client  → Server :  QUESTION|<username>|<groupName>|<text>
- *   Admin   → Server :  INBOX|<adminName>
- *   Admin   → Server :  REPLY|<adminName>|<questionId>|<replyText>
- *
- *   Server  → Client :  OK|<detail>
- *                       ERROR|<detail>
- *                       ALERT|<groupName>|<message>
- *                       QUESTION_ID|<id>
- *                       INBOX|<id>|<username>|<group>|<text>[|ANSWERED] ...  (one line per question)
- *                       REPLY|<adminName>|<replyText>
- *
- * Persistence (plain text files in ./data/):
- *   groups.txt          – one line per group:  groupName|adminName
- *   members_<group>.txt – one line per member: username|ip|port
- *   inbox_<admin>.txt   – one line per question: id|username|senderIp|senderPort|group|text|status
- */
 public class AlertServer {
 
     static final int SERVER_PORT = 6700;
@@ -47,7 +16,7 @@ public class AlertServer {
 
         try {
             socket = new DatagramSocket(SERVER_PORT);
-            System.out.println("=== Alert Server started on port " + SERVER_PORT + " ===");
+            System.out.println("Alert Server started on port " + SERVER_PORT );
 
             byte[] buffer = new byte[4096];
 
