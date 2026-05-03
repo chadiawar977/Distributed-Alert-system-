@@ -3,11 +3,12 @@ package alertsystem;
 import java.net.*;
 import java.io.*;
 import java.util.Scanner;
+import java.util.NoSuchElementException;
 
 public class UserClient {
 
     static final int SERVER_PORT = 6700;
-    static final int SO_TIMEOUT  = 3000; // ms for request/reply cycle
+    static final int SO_TIMEOUT = 3000; // ms for request/reply cycle
 
     public static void main(String[] args) {
         String serverHost = (args.length > 0) ? args[0] : "localhost";
@@ -47,7 +48,6 @@ public class UserClient {
                 }
             });
 
-
             socket.setSoTimeout(SO_TIMEOUT);
             listener.setDaemon(true);
             listener.start();
@@ -57,7 +57,8 @@ public class UserClient {
             while (true) {
                 System.out.print("> ");
                 String input = scanner.nextLine().trim();
-                if (input.isEmpty()) continue;
+                if (input.isEmpty())
+                    continue;
 
                 String[] tokens = input.split(" ", 2);
                 String cmd = tokens[0].toUpperCase();
@@ -66,20 +67,32 @@ public class UserClient {
 
                 switch (cmd) {
                     case "REGISTER":
-                        if (tokens.length < 2) { System.out.println("Usage: register <groupName>"); continue; }
+                        if (tokens.length < 2) {
+                            System.out.println("Usage: register <groupName>");
+                            continue;
+                        }
                         msgToSend = "REGISTER|" + username + "|" + tokens[1].trim();
                         break;
 
                     case "LEAVE":
-                        if (tokens.length < 2) { System.out.println("Usage: leave <groupName>"); continue; }
+                        if (tokens.length < 2) {
+                            System.out.println("Usage: leave <groupName>");
+                            continue;
+                        }
                         msgToSend = "LEAVE|" + username + "|" + tokens[1].trim();
                         break;
 
                     case "QUESTION":
                         // question <groupName> <text...>
-                        if (tokens.length < 2) { System.out.println("Usage: question <groupName> <your question>"); continue; }
+                        if (tokens.length < 2) {
+                            System.out.println("Usage: question <groupName> <your question>");
+                            continue;
+                        }
                         String[] qParts = tokens[1].split(" ", 2);
-                        if (qParts.length < 2) { System.out.println("Usage: question <groupName> <your question>"); continue; }
+                        if (qParts.length < 2) {
+                            System.out.println("Usage: question <groupName> <your question>");
+                            continue;
+                        }
                         msgToSend = "QUESTION|" + username + "|" + qParts[0] + "|" + qParts[1];
                         break;
 
@@ -97,18 +110,7 @@ public class UserClient {
                         continue;
                 }
 
-                // Send and wait for acknowledgement from server
-                String response = sendAndReceive(socket, msgToSend, serverAddr, SERVER_PORT);
-                if (response != null) {
-                    // Ignore push messages that slipped in; print server ack
-                    if (!response.startsWith("ALERT") && !response.startsWith("REPLY")) {
-                        System.out.println("[Server] " + response.replace("|", " | "));
-                    } else {
-                        handlePushedMessage(response, username);
-                    }
-                } else {
-                    System.out.println("[No response – server may be down or busy]");
-                }
+                sendOnly(socket, msgToSend, serverAddr, SERVER_PORT);
             }
 
         } catch (UnknownHostException e) {
@@ -117,16 +119,27 @@ public class UserClient {
             System.out.println("Socket error: " + e.getMessage());
         } catch (IOException e) {
             System.out.println("IO error: " + e.getMessage());
+        } catch (NoSuchElementException e) {
+            System.out.println();
+            System.out.println("Goodbye.");
         } finally {
-            if (socket != null) socket.close();
+            if (socket != null)
+                socket.close();
         }
+    }
+
+    static void sendOnly(DatagramSocket socket, String msg,
+            InetAddress serverAddr, int serverPort) throws IOException {
+        byte[] data = msg.getBytes("UTF-8");
+        DatagramPacket request = new DatagramPacket(data, data.length, serverAddr, serverPort);
+        socket.send(request);
     }
 
     static void handlePushedMessage(String msg, String username) {
         if (msg.startsWith("ALERT|")) {
             // ALERT|<groupName>|<message>
             String[] f = msg.split("\\|", 3);
-            String group   = (f.length > 1) ? f[1] : "?";
+            String group = (f.length > 1) ? f[1] : "?";
             String message = (f.length > 2) ? f[2] : "";
             System.out.println();
             System.out.println("SECURITY ALERT ");
@@ -139,34 +152,14 @@ public class UserClient {
             String admin = (f.length > 1) ? f[1] : "Admin";
             String reply = (f.length > 2) ? f[2] : "";
             System.out.println();
-            System.out.println("┌── Reply from " + admin );
+            System.out.println("┌── Reply from " + admin);
             System.out.println(reply);
             System.out.print("> ");
+        } else {
+            System.out.println();
+            System.out.println("[Server] " + msg.replace("|", " | "));
+            System.out.print("> ");
         }
-    }
-
-    // -------------------------------------------------------------------------
-    // Send a UDP packet and wait for a single reply (with timeout)
-    // -------------------------------------------------------------------------
-    static String sendAndReceive(DatagramSocket socket, String msg,
-                                  InetAddress serverAddr, int serverPort) throws IOException {
-        byte[] data = msg.getBytes("UTF-8");
-        DatagramPacket request = new DatagramPacket(data, data.length, serverAddr, serverPort);
-        socket.send(request);
-
-        byte[] buffer = new byte[4096];
-        DatagramPacket reply = new DatagramPacket(buffer, buffer.length);
-        try {
-            socket.receive(reply);
-            return new String(reply.getData(), 0, reply.getLength(), "UTF-8");
-        } catch (SocketTimeoutException e) {
-            return null;
-        }
-    }
-
-    static String padRight(String s, int n) {
-        if (s.length() >= n) return s.substring(0, n);
-        return s + " ".repeat(n - s.length());
     }
 
     static void printUserHelp() {
