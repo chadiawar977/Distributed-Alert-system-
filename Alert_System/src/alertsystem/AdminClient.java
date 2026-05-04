@@ -33,28 +33,6 @@ public class AdminClient {
             String adminName = scanner.nextLine().trim();
 
             printAdminHelp();
-            // Dead code for receiving server messages asynchronously (e.g., alerts or
-            // replies to questions)
-            // final DatagramSocket finalSocket = socket;
-            // Thread receiver = new Thread(() -> {
-            // byte[] buf = new byte[4096];
-            // while (!finalSocket.isClosed()) {
-            // DatagramPacket pkt = new DatagramPacket(buf, buf.length);
-            // try {
-            // finalSocket.receive(pkt);
-            // String msg = new String(pkt.getData(), 0, pkt.getLength(), "UTF-8");
-            // System.out.println("\n[SERVER] " + msg);
-            // System.out.print("> ");
-            // } catch (SocketTimeoutException e) {
-            // // normal – keep looping
-            // } catch (IOException e) {
-            // if (!finalSocket.isClosed())
-            // System.out.println("Receive error: " + e.getMessage());
-            // }
-            // }
-            // });
-            // receiver.setDaemon(true);
-
             InetAddress serverAddr = InetAddress.getByName(serverHost);
 
             while (true) {
